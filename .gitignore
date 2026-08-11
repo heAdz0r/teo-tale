@@ -39,6 +39,7 @@ yarn-error.log*
 /outputs/
 /work/
 *.tsbuildinfo
+/.grepai/
 
 # private source material (kept only in the local project directory)
 /archive/audio/

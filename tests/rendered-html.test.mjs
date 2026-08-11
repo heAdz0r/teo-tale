@@ -61,3 +61,37 @@ test("server-renders the continuation reading room", async () => {
   assert.match(html, /Талос/);
   assert.doesNotMatch(html, /Вессимир|Талас/);
 });
+
+const readableChapters = [
+  ["chapter-6", "Порог, который не любит приказов", "Тео ещё долго смотрел на принца"],
+  ["chapter-7", "Ответ свистка", "Тео стоял среди первых деревьев"],
+  ["chapter-8", "Зеркало первого снега", "Медная печать Талоса лежала"],
+  ["chapter-9", "Голос в белой перчатке", "Щелчок под полом прозвучал негромко"],
+  ["chapter-10", "Ворон, который знал", "Талос стоял по ту сторону зеркала"],
+  ["chapter-11", "Совет, который сказал «нет»", "Совет собирали в комнате"],
+  ["chapter-12", "Голос без приказа", "До часовой башни вели триста шестнадцать ступеней"],
+];
+
+for (const [id, title, opening] of readableChapters) {
+  test(`opens the full text for ${id} from its own URL`, async () => {
+    const response = await render(`/chapters?chapter=${id}`);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.match(html, new RegExp(opening.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.match(html, new RegExp(`name="chapter" value="${id}"`));
+    assert.match(html, new RegExp(`id="${id}"`));
+  });
+}
+
+test("chapter cards use server-readable chapter URLs", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const readingRoom = await readFile(new URL("../app/chapters/page.tsx", import.meta.url), "utf8");
+
+  for (const [id] of readableChapters) {
+    assert.match(page, new RegExp(`/chapters\\?chapter=${id}`));
+    assert.match(readingRoom, new RegExp(`id: "${id}"`));
+  }
+  assert.doesNotMatch(page, /\/chapters#chapter-/);
+  assert.doesNotMatch(readingRoom, /useEffect|window\.location\.hash|replaceState/);
+});

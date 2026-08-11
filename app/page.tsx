@@ -6,14 +6,14 @@ import Link from "next/link";
 import {
   archive, artifacts, artifactScenarios, canonStats, characters, continuity, developmentRoutes,
   episodes, navSections, nextChapterBlueprint, places, plotThreads,
-  type WikiSectionId, worldPrinciples,
+  type WikiSectionId, worldOverview, worldPrinciples,
 } from "../content/wiki";
 
 const searchable = [
   ...worldPrinciples.map((item) => ({ section: "world" as const, title: item.title, text: item.text })),
   ...places.map((item) => ({ section: "world" as const, title: item.name, text: item.text })),
   ...characters.map((item) => ({ section: "characters" as const, title: item.name, text: [...item.canon, item.arc, item.question].join(" ") })),
-  ...episodes.map((item) => ({ section: "chronicle" as const, title: item.title, text: `${item.summary} ${item.beats.join(" ")}` })),
+  ...episodes.map((item) => ({ section: "chronicle" as const, title: item.title, text: `${item.summary} ${item.details.join(" ")} ${item.beats.join(" ")}` })),
   ...plotThreads.map((item) => ({ section: "plot" as const, title: item.title, text: `${item.now} ${item.strengthen} ${item.payoff}` })),
   ...artifacts.map((item) => ({ section: "artifacts" as const, title: item.name, text: `${item.canon} ${item.rule}` })),
   ...artifactScenarios.map((item) => ({ section: "artifacts" as const, title: item.artifact, text: `${item.situation} ${item.choicePrice} ${item.consequence}` })),
@@ -146,6 +146,10 @@ function Overview({ navigate }: { navigate: (section: WikiSectionId) => void }) 
 function World() {
   return <>
     <PageHead index="01" kicker="АТЛАС" title="Мир истории" intro="Мир строится от маленького и знакомого к большому и чудесному: деревня, дорога, богатая крепость, горный рубеж и земли, где сама смена времён года стала оружием." />
+    <figure className="world-plate">
+      <Image src={worldOverview.image} width={1536} height={1024} alt={worldOverview.alt} />
+      <figcaption><span>Панорама мира</span>{worldOverview.caption}</figcaption>
+    </figure>
     <div className="principle-grid">{worldPrinciples.map((item) => <article key={item.title} className={item.status === "канон" ? "canon-card" : "idea-card"}><span>{item.status}</span><h2>{item.title}</h2><p>{item.text}</p></article>)}</div>
     <h2 className="section-title">География пути</h2>
     <div className="route-line">{places.map((place, index) => <article key={place.name}><div className="route-index">{String(index + 1).padStart(2, "0")}</div><div><span>{place.kind}</span><h3>{place.name}</h3><p>{place.text}</p></div></article>)}</div>
@@ -156,17 +160,20 @@ function Characters() {
   return <>
     <PageHead index="02" kicker="ДЕЙСТВУЮЩИЕ ЛИЦА" title="Персонажи" intro="Карточки разделяют уже рассказанные факты, возможную внутреннюю арку и вопрос, который способен двигать героя дальше." />
     <div className="character-grid">{characters.map((character, index) => <article key={character.name} className="character-card">
-      <div className="character-top"><span className="portrait-token">{character.mark}</span><div><p>{character.role}</p><h2>{character.name}</h2></div><b>{String(index + 1).padStart(2, "0")}</b></div>
-      <ul>{character.canon.map((fact) => <li key={fact}>{fact}</li>)}</ul>
-      <div className="arc"><span>ДУГА</span><p>{character.arc}</p></div><blockquote>{character.question}</blockquote>
+      <Image className="character-portrait" src={character.image} width={1254} height={1254} alt={character.imageAlt} />
+      <div className="character-card-content">
+        <div className="character-top"><span className="portrait-token">{character.mark}</span><div><p>{character.role}</p><h2>{character.name}</h2></div><b>{String(index + 1).padStart(2, "0")}</b></div>
+        <ul>{character.canon.map((fact) => <li key={fact}>{fact}</li>)}</ul>
+        <div className="arc"><span>ДУГА</span><p>{character.arc}</p></div><blockquote>{character.question}</blockquote>
+      </div>
     </article>)}</div>
   </>;
 }
 
 function Chronicle() {
   return <>
-    <PageHead index="03" kicker="ЛЕТОПИСЬ" title="Пять рассказанных глав" intro="Хроника следует порядку аудиозаписей. Это надёжный каркас: новые подробности можно добавлять между событиями, не меняя уже рассказанные повороты." />
-    <div className="timeline">{episodes.map((episode) => <article key={episode.no}><div className="roman">{episode.no}</div><div className="episode-body"><div className="episode-meta"><span>{episode.date}</span><span>{episode.duration}</span></div><h2>{episode.title}</h2><p>{episode.summary}</p><div className="chips">{episode.beats.map((beat) => <span key={beat}>{beat}</span>)}</div></div></article>)}</div>
+    <PageHead index="03" kicker="ЛЕТОПИСЬ" title="Пять рассказанных глав" intro="Подробная хронология бережно следует пяти аудиозаписям: сохраняет порядок событий, маленькие бытовые детали, решения Тео и уже посеянные тайны, не смешивая канон с редакторскими продолжениями." />
+    <div className="timeline">{episodes.map((episode) => <article key={episode.no}><div className="roman">{episode.no}</div><div className="episode-body"><div className="episode-meta"><span>{episode.date}</span><span>{episode.duration}</span></div><h2>{episode.title}</h2><p>{episode.summary}</p><ul className="episode-details">{episode.details.map((detail) => <li key={detail}>{detail}</li>)}</ul><div className="chips">{episode.beats.map((beat) => <span key={beat}>{beat}</span>)}</div></div></article>)}</div>
   </>;
 }
 
@@ -180,7 +187,7 @@ function Plot() {
 function Artifacts() {
   return <>
     <PageHead index="05" kicker="КАТАЛОГ" title="Артефакты и правила" intro="Чтобы магия создавала сюжет, а не отменяла трудности, каждому предмету нужны ясная возможность, граница и цена." />
-    <div className="artifact-table"><div className="artifact-row artifact-header"><span>Артефакт</span><span>Канон</span><span>Рабочее ограничение</span></div>{artifacts.map((artifact) => <article className="artifact-row" key={artifact.name}><div><h2>{artifact.name}</h2><p>{artifact.owner}</p><b>{artifact.state}</b></div><p>{artifact.canon}</p><p className="proposal">{artifact.rule}</p></article>)}</div>
+    <div className="artifact-table"><div className="artifact-row artifact-header"><span aria-hidden="true" /><span>Артефакт</span><span>Канон</span><span>Рабочее ограничение</span></div>{artifacts.map((artifact) => <article className="artifact-row" key={artifact.name}><Image className="artifact-thumb" src={artifact.image} width={1254} height={1254} alt={artifact.imageAlt} /><div><h2>{artifact.name}</h2><p>{artifact.owner}</p><b>{artifact.state}</b></div><p>{artifact.canon}</p><p className="proposal">{artifact.rule}</p></article>)}</div>
     <h2 className="section-title">Ситуации, где артефакт придётся применить</h2>
     <div className="scenario-grid">{artifactScenarios.map((scenario, index) => <article key={`${scenario.artifact}-${index}`}>
       <div><span>{String(index + 1).padStart(2, "0")}</span><strong>{scenario.artifact}</strong></div>
@@ -205,11 +212,15 @@ function Workshop() {
     <PageHead index="07" kicker="МАСТЕРСКАЯ АВТОРА" title="Куда вести историю" intro="Три направления не конкурируют насмерть: одно может стать внешним приключением, второе — тайной мира, третье — внутренним конфликтом союзника." />
     <div className="route-tabs" role="tablist" aria-label="Варианты продолжения">{developmentRoutes.map((item, index) => <button key={item.key} onClick={() => setRoute(index)} className={route === index ? "active" : ""} role="tab" aria-selected={route === index}><span>{item.key}</span>{item.title}</button>)}</div>
     <article className="route-detail"><div className="route-title"><div><p>{selected.tone}</p><h2>{selected.title}</h2></div><span>{selected.key}</span></div><p className="route-premise">{selected.premise}</p><h3>Три ближайших поворота</h3><ol>{selected.next.map((item) => <li key={item}>{item}</li>)}</ol><div className="why"><strong>Почему работает</strong><p>{selected.strength}</p></div></article>
-    <h2 className="section-title">Три готовые главы для чтения</h2>
+    <h2 className="section-title">Семь готовых глав для чтения</h2>
     <div className="chapter-cards">
-      <Link href="/chapters#chapter-6"><span>VI · 11–12 минут</span><strong>Порог, который не любит приказов</strong><p>Талос объясняет Полог, Тео пишет родителям и отвечает за историю с караваном.</p></Link>
-      <Link href="/chapters#chapter-7"><span>VII · 11–12 минут</span><strong>Ответ свистка</strong><p>Свисток создаёт встречу, клинок требует решения, а лес начинает забирать память.</p></Link>
-      <Link href="/chapters#chapter-8"><span>VIII · 11–12 минут</span><strong>Зеркало первого снега</strong><p>Тео раскрывает способ кражи и узнаёт, почему опасен даже осколок зимы.</p></Link>
+      <Link href="/chapters?chapter=chapter-6"><span>VI · 11–12 минут</span><strong>Порог, который не любит приказов</strong><p>Талос объясняет Полог, Тео пишет родителям и отвечает за историю с караваном.</p></Link>
+      <Link href="/chapters?chapter=chapter-7"><span>VII · 11–12 минут</span><strong>Ответ свистка</strong><p>Свисток создаёт встречу, клинок требует решения, а лес начинает забирать память.</p></Link>
+      <Link href="/chapters?chapter=chapter-8"><span>VIII · 11–12 минут</span><strong>Зеркало первого снега</strong><p>Тео раскрывает способ кражи и узнаёт, почему опасен даже осколок зимы.</p></Link>
+      <Link href="/chapters?chapter=chapter-9"><span>IX · 11–12 минут</span><strong>Голос в белой перчатке</strong><p>Отражение крадёт голос Талоса, а Тео и Лея останавливают первый замок весенней двери.</p></Link>
+      <Link href="/chapters?chapter=chapter-10"><span>X · 11–12 минут</span><strong>Ворон, который знал</strong><p>Талос раскрывает сон Весемира и объясняет, почему следил за Тео с самого начала.</p></Link>
+      <Link href="/chapters?chapter=chapter-11"><span>XI · 11–12 минут</span><strong>Совет, который сказал «нет»</strong><p>Принц признаётся в опасности своего дара, а двор учится проверять даже знакомый голос.</p></Link>
+      <Link href="/chapters?chapter=chapter-12"><span>XII · 11–12 минут</span><strong>Голос без приказа</strong><p>Свисток возвращает помощь отца, Талос отказывается от преимущества, а весенняя дверь закрывается.</p></Link>
     </div>
     <h2 className="section-title">Скелет следующих эпизодов</h2><div className="blueprint">{nextChapterBlueprint.map((item) => <article key={item.beat}><span>{item.beat}</span><p>{item.text}</p></article>)}</div>
   </>;
