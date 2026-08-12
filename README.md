@@ -75,8 +75,8 @@ npm run tts:generate
 создаются в named volumes и не теряются при пересборке приложения:
 
 ```bash
-docker compose --profile tts run --rm tts
-TEO_PORT=8080 docker compose up -d --build app web
+docker compose -f compose.yaml -f compose.tts.yaml --profile tts run --rm tts
+TEO_PORT=8080 docker compose up -d --build site app
 docker compose --profile smoke run --rm smoke
 ```
 
@@ -84,6 +84,9 @@ docker compose --profile smoke run --rm smoke
 места и до 4 ГБ RAM. Последующие запуски генератора идемпотентны. Для обычного
 обновления достаточно `./deploy/deploy.sh`: он запускает TTS только при пустом
 volume. Внешний bind и порт задаются через `TEO_BIND` и `TEO_PORT`.
+Production-домен — `https://teo.superlapka.ru`; `www` перенаправляется на него.
+В Coolify оба домена должны быть назначены публичному сервису `app` (Nginx),
+а `site` остаётся внутренним приложением без домена.
 
 Upstream обозначает лицензию весов Silero как CC-NC-BY. Перед любым
 коммерческим использованием проверьте актуальную лицензию проекта Silero.

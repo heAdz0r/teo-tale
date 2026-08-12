@@ -1,0 +1,16 @@
+services:
+  tts:
+    profiles: ["tts"]
+    build:
+      context: .
+      dockerfile: Dockerfile.tts
+    volumes:
+      - narration:/narration
+      - silero-cache:/app/.cache/silero
+    deploy:
+      resources:
+        limits:
+          memory: ${TTS_MEMORY_LIMIT:-4G}
+
+volumes:
+  silero-cache:

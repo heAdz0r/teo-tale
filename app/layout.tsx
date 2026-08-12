@@ -31,16 +31,18 @@ const ui = Alegreya_Sans({
 
 const title = "Летопись Тео — семейная wiki сказочного мира";
 const description = "Герои, мир, хронология и мастерская продолжений авторской сказки о Тео и четырёх временах года.";
+const productionOrigin = "https://teo.superlapka.ru";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? new URL(productionOrigin).host;
   const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const origin = `${protocol}://${host}`;
   const image = `${origin}/og.png`;
 
   return {
     metadataBase: new URL(origin),
+    alternates: { canonical: productionOrigin },
     title,
     description,
     icons: { icon: { url: "/favicon.svg", type: "image/svg+xml" } },
