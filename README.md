@@ -77,7 +77,7 @@ npm run tts:generate
 
 ```bash
 docker compose -f compose.yaml -f compose.tts.yaml --profile tts run --rm tts
-TEO_PORT=8080 docker compose up -d --build site app
+TEO_PORT=8080 docker compose -f compose.yaml -f compose.local.yaml up -d --build site app
 docker compose --profile smoke run --rm smoke
 ```
 
@@ -87,7 +87,10 @@ docker compose --profile smoke run --rm smoke
 volume. Внешний bind и порт задаются через `TEO_BIND` и `TEO_PORT`.
 Production-домен — `https://teo.superlapka.ru`; `www` перенаправляется на него.
 В Coolify оба домена должны быть назначены публичному сервису `app` (Nginx),
-а `site` остаётся внутренним приложением без домена.
+а `site` остаётся внутренним приложением без домена. Основной `compose.yaml`
+не занимает host-порт: Coolify подключает ingress к открытому порту `80` сам.
+`compose.local.yaml` добавляет `127.0.0.1:8080` только для самостоятельного
+запуска вне Coolify.
 
 Upstream обозначает лицензию весов Silero как CC-NC-BY. Перед любым
 коммерческим использованием проверьте актуальную лицензию проекта Silero.

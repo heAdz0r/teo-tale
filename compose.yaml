@@ -19,8 +19,8 @@ services:
     depends_on:
       site:
         condition: service_healthy
-    ports:
-      - "${TEO_BIND:-0.0.0.0}:${TEO_PORT:-8080}:80"
+    expose:
+      - "80"
     volumes:
       - narration:/srv/narration:ro
       - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
