@@ -72,7 +72,8 @@ npm run tts:generate
 ## Docker Compose
 
 Репозиторий не содержит сгенерированные OGG и веса модели. На сервере они
-создаются в named volumes и не теряются при пересборке приложения:
+создаются в named volumes `teo-tale-narration` и `teo-tale-silero-cache` и не
+теряются при пересборке приложения или смене внутреннего project name Coolify:
 
 ```bash
 docker compose -f compose.yaml -f compose.tts.yaml --profile tts run --rm tts

@@ -14,3 +14,4 @@ services:
 
 volumes:
   silero-cache:
+    name: teo-tale-silero-cache

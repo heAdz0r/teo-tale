@@ -44,3 +44,4 @@ services:
 
 volumes:
   narration:
+    name: teo-tale-narration
