@@ -36,6 +36,14 @@ const eslintConfig = defineConfig([
       },
     },
   },
+  {
+    files: ["app/page.tsx", "app/chapters/page.tsx"],
+    rules: {
+      // vinext 1.0.0-beta.2 currently throws in next/link's RSC prefetch path.
+      // Plain document navigation is intentional until the upstream adapter is fixed.
+      "@next/next/no-html-link-for-pages": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

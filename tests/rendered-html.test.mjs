@@ -42,9 +42,11 @@ test("removes disposable starter surfaces and dependency", async () => {
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.match(layout, /Летопись Тео/);
   assert.match(layout, /og\.png/);
+  assert.match(layout, /favicon\.svg/);
 
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
   await access(new URL("../public/characters-cover.png", import.meta.url));
+  await access(new URL("../public/favicon.svg", import.meta.url));
   await access(new URL("../public/og.png", import.meta.url));
   await access(new URL("../content/raw-transcripts.json", import.meta.url));
   await access(new URL("../archive/audio/19166.ogg", import.meta.url));
@@ -93,5 +95,7 @@ test("chapter cards use server-readable chapter URLs", async () => {
     assert.match(readingRoom, new RegExp(`id: "${id}"`));
   }
   assert.doesNotMatch(page, /\/chapters#chapter-/);
+  assert.doesNotMatch(page, /next\/link|<Link\b/);
+  assert.doesNotMatch(readingRoom, /next\/link|<Link\b/);
   assert.doesNotMatch(readingRoom, /useEffect|window\.location\.hash|replaceState/);
 });

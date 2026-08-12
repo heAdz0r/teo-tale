@@ -19,14 +19,24 @@ Wiki работает на [vinext](https://github.com/cloudflare/vinext).
 ## Prerequisites
 
 - Node.js `>=22.13.0`
+- Bun `>=1.2` для рекомендуемого локального запуска
 
 ## Quick Start
 
 ```bash
-npm install
-npm run dev
-npm run build
+bun install
+bun run dev
 ```
+
+Wiki откроется по адресу, который напечатает dev-сервер (обычно
+`http://localhost:3000`). Проверить production-сборку и тесты можно так:
+
+```bash
+bun run build
+bun run test:bun
+```
+
+Сценарии остаются совместимы с npm: `npm install`, `npm run dev`, `npm test`.
 
 This starter does not use `wrangler.jsonc`.
 
@@ -101,10 +111,10 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 
 ## Useful Commands
 
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+- `bun run dev`: запустить Wiki локально
+- `bun run build`: проверить production-сборку vinext
+- `bun run test:bun`: собрать Wiki и проверить все серверные страницы через Bun
+- `bun run db:generate`: сгенерировать миграции Drizzle после изменения схемы
 
 ## Learn More
 

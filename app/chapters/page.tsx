@@ -1,4 +1,3 @@
-import Link from "next/link";
 import chapterSix from "../../content/continuations/06-porog-bez-prikazov.md?raw";
 import chapterSeven from "../../content/continuations/07-otvet-svistka.md?raw";
 import chapterEight from "../../content/continuations/08-zerkalo-pervogo-snega.md?raw";
@@ -37,13 +36,13 @@ export default async function ChaptersPage({ searchParams }: ChaptersPageProps) 
   const selected = chapters[active];
 
   return <main className="reading-room">
-    <header className="reading-topbar"><Link href="/#workshop">← Вернуться в Wiki</Link><span>Летопись Тео · продолжения</span></header>
+    <header className="reading-topbar"><a href="/#workshop">← Вернуться в Wiki</a><span>Летопись Тео · продолжения</span></header>
     <div className="reading-layout">
       <aside className="chapter-index" aria-label="Готовые главы"><p>ГЛАВЫ</p>{chapters.map((chapter, index) => <form key={chapter.id} action="/chapters" method="get"><input type="hidden" name="chapter" value={chapter.id} /><button type="submit" className={index === active ? "active" : ""} aria-current={index === active ? "page" : undefined}><span>{chapter.numeral}</span><strong>{chapter.title}</strong><small>11–12 минут</small></button></form>)}</aside>
       <article className="chapter-text" id={selected.id}>
         <header><p>ГЛАВА {selected.numeral}</p><h1>{selected.title}</h1><span>≈ 11–12 минут спокойного чтения</span></header>
         {narrative(selected.markdown).map((paragraph, index) => <p key={index}>{paragraph}</p>)}
-        <footer>{active < chapters.length - 1 ? <Link href={`/chapters?chapter=${chapters[active + 1].id}`}>Следующая глава →</Link> : <Link href="/#workshop">Вернуться к вариантам развития →</Link>}</footer>
+        <footer>{active < chapters.length - 1 ? <a href={`/chapters?chapter=${chapters[active + 1].id}`}>Следующая глава →</a> : <a href="/#workshop">Вернуться к вариантам развития →</a>}</footer>
       </article>
     </div>
   </main>;

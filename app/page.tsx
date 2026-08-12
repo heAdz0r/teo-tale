@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import {
   archive, artifacts, artifactScenarios, canonStats, characters, continuity, developmentRoutes,
   episodes, navSections, nextChapterBlueprint, places, plotThreads,
@@ -214,13 +213,13 @@ function Workshop() {
     <article className="route-detail"><div className="route-title"><div><p>{selected.tone}</p><h2>{selected.title}</h2></div><span>{selected.key}</span></div><p className="route-premise">{selected.premise}</p><h3>Три ближайших поворота</h3><ol>{selected.next.map((item) => <li key={item}>{item}</li>)}</ol><div className="why"><strong>Почему работает</strong><p>{selected.strength}</p></div></article>
     <h2 className="section-title">Семь готовых глав для чтения</h2>
     <div className="chapter-cards">
-      <Link href="/chapters?chapter=chapter-6"><span>VI · 11–12 минут</span><strong>Порог, который не любит приказов</strong><p>Талос объясняет Полог, Тео пишет родителям и отвечает за историю с караваном.</p></Link>
-      <Link href="/chapters?chapter=chapter-7"><span>VII · 11–12 минут</span><strong>Ответ свистка</strong><p>Свисток создаёт встречу, клинок требует решения, а лес начинает забирать память.</p></Link>
-      <Link href="/chapters?chapter=chapter-8"><span>VIII · 11–12 минут</span><strong>Зеркало первого снега</strong><p>Тео раскрывает способ кражи и узнаёт, почему опасен даже осколок зимы.</p></Link>
-      <Link href="/chapters?chapter=chapter-9"><span>IX · 11–12 минут</span><strong>Голос в белой перчатке</strong><p>Отражение крадёт голос Талоса, а Тео и Лея останавливают первый замок весенней двери.</p></Link>
-      <Link href="/chapters?chapter=chapter-10"><span>X · 11–12 минут</span><strong>Ворон, который знал</strong><p>Талос раскрывает сон Весемира и объясняет, почему следил за Тео с самого начала.</p></Link>
-      <Link href="/chapters?chapter=chapter-11"><span>XI · 11–12 минут</span><strong>Совет, который сказал «нет»</strong><p>Принц признаётся в опасности своего дара, а двор учится проверять даже знакомый голос.</p></Link>
-      <Link href="/chapters?chapter=chapter-12"><span>XII · 11–12 минут</span><strong>Голос без приказа</strong><p>Свисток возвращает помощь отца, Талос отказывается от преимущества, а весенняя дверь закрывается.</p></Link>
+      <a href="/chapters?chapter=chapter-6"><span>VI · 11–12 минут</span><strong>Порог, который не любит приказов</strong><p>Талос объясняет Полог, Тео пишет родителям и отвечает за историю с караваном.</p></a>
+      <a href="/chapters?chapter=chapter-7"><span>VII · 11–12 минут</span><strong>Ответ свистка</strong><p>Свисток создаёт встречу, клинок требует решения, а лес начинает забирать память.</p></a>
+      <a href="/chapters?chapter=chapter-8"><span>VIII · 11–12 минут</span><strong>Зеркало первого снега</strong><p>Тео раскрывает способ кражи и узнаёт, почему опасен даже осколок зимы.</p></a>
+      <a href="/chapters?chapter=chapter-9"><span>IX · 11–12 минут</span><strong>Голос в белой перчатке</strong><p>Отражение крадёт голос Талоса, а Тео и Лея останавливают первый замок весенней двери.</p></a>
+      <a href="/chapters?chapter=chapter-10"><span>X · 11–12 минут</span><strong>Ворон, который знал</strong><p>Талос раскрывает сон Весемира и объясняет, почему следил за Тео с самого начала.</p></a>
+      <a href="/chapters?chapter=chapter-11"><span>XI · 11–12 минут</span><strong>Совет, который сказал «нет»</strong><p>Принц признаётся в опасности своего дара, а двор учится проверять даже знакомый голос.</p></a>
+      <a href="/chapters?chapter=chapter-12"><span>XII · 11–12 минут</span><strong>Голос без приказа</strong><p>Свисток возвращает помощь отца, Талос отказывается от преимущества, а весенняя дверь закрывается.</p></a>
     </div>
     <h2 className="section-title">Скелет следующих эпизодов</h2><div className="blueprint">{nextChapterBlueprint.map((item) => <article key={item.beat}><span>{item.beat}</span><p>{item.text}</p></article>)}</div>
   </>;
