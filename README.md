@@ -38,6 +38,56 @@ bun run test:bun
 
 Сценарии остаются совместимы с npm: `npm install`, `npm run dev`, `npm test`.
 
+## Озвучка Silero
+
+Читалка воспроизводит заранее сгенерированные OGG-фрагменты Silero `v5_5_ru`.
+Для локальной генерации нужны Python 3, PyTorch и `ffmpeg` с `libopus`:
+
+```bash
+python3 -m pip install -r requirements-tts.txt
+npm run tts:sample
+python3 scripts/generate_silero_narration.py --chapter chapter-6
+npm run tts:generate
+```
+
+Режиссёрский источник — `content/narration/direction.json`: там находятся
+ручные ударения имён, произносимые варианты фраз, паузы, темп и высота тона.
+Перед генерацией его точные текстовые якоря проверяются командой
+`npm run tts:validate`; синтез не начнётся при устаревшей или неоднозначной
+разметке. Синтаксис и правила редактирования описаны в
+`content/narration/README.md`.
+
+По умолчанию используется голос `xenia`. Один другой голос генерируется через
+`--speaker aidar|baya|kseniya|xenia|eugene`, все доступные голоса и их образцы —
+командами `npm run tts:all-voices` и `npm run tts:samples`. Интерфейс показывает
+селектор рассказчика и загружает манифест из
+`public/audio/narration/<voice>/chapter-N/`. Если выбранного пакета нет,
+используется системный голос браузера `ru-RU`.
+
+Модель кэшируется в `.cache/silero/`. Изменение текста или режиссуры создаёт
+новую SHA-256-ревизию имён файлов, поэтому CDN не отдаст старое произношение.
+Готовые OGG и веса модели не хранятся в Git: их воспроизводит генератор из
+текста и `content/narration/direction.json`.
+
+## Docker Compose
+
+Репозиторий не содержит сгенерированные OGG и веса модели. На сервере они
+создаются в named volumes и не теряются при пересборке приложения:
+
+```bash
+docker compose --profile tts run --rm tts
+TEO_PORT=8080 docker compose up -d --build app web
+docker compose --profile smoke run --rm smoke
+```
+
+Первый синтез всех пяти голосов требует сети, нескольких гигабайт свободного
+места и до 4 ГБ RAM. Последующие запуски генератора идемпотентны. Для обычного
+обновления достаточно `./deploy/deploy.sh`: он запускает TTS только при пустом
+volume. Внешний bind и порт задаются через `TEO_BIND` и `TEO_PORT`.
+
+Upstream обозначает лицензию весов Silero как CC-NC-BY. Перед любым
+коммерческим использованием проверьте актуальную лицензию проекта Silero.
+
 This starter does not use `wrangler.jsonc`.
 
 ## Included Shape

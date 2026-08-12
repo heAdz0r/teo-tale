@@ -1,0 +1,60 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/chapters').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "${TEO_BIND:-0.0.0.0}:${TEO_PORT:-8080}:80"
+    volumes:
+      - narration:/srv/narration:ro
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz | grep -q ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  smoke:
+    profiles: ["smoke"]
+    image: curlimages/curl:8.12.1
+    depends_on:
+      web:
+        condition: service_healthy
+    command:
+      - --fail
+      - --silent
+      - --show-error
+      - http://web/chapters
+
+  tts:
+    profiles: ["tts"]
+    build:
+      context: .
+      dockerfile: Dockerfile.tts
+    volumes:
+      - narration:/narration
+      - silero-cache:/app/.cache/silero
+    deploy:
+      resources:
+        limits:
+          memory: ${TTS_MEMORY_LIMIT:-4G}
+
+volumes:
+  narration:
+  silero-cache:

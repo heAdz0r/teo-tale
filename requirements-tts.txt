@@ -1,0 +1,2 @@
+# Optional offline narration toolchain. The website itself has no Python runtime.
+torch>=2.0,<3

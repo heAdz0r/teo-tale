@@ -1,0 +1,17 @@
+.git
+.github
+.cache
+.claude
+.grepai
+.next
+.vinext
+.wrangler
+archive/audio
+content/raw-transcripts.json
+dist
+node_modules
+outputs
+public/audio/narration
+work
+*.tsbuildinfo
+.env*

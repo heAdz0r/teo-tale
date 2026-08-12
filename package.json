@@ -12,6 +12,11 @@
     "test": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build && node --test tests/rendered-html.test.mjs",
     "test:bun": "bun run build && bun test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "tts:sample": "python3 scripts/generate_silero_narration.py --sample",
+    "tts:samples": "python3 scripts/generate_silero_narration.py --sample --all-speakers",
+    "tts:generate": "python3 scripts/generate_silero_narration.py",
+    "tts:all-voices": "python3 scripts/generate_silero_narration.py --all-speakers",
+    "tts:validate": "python3 scripts/generate_silero_narration.py --validate-only",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

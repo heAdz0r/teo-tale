@@ -1,29 +1,5 @@
-import chapterSix from "../../content/continuations/06-porog-bez-prikazov.md?raw";
-import chapterSeven from "../../content/continuations/07-otvet-svistka.md?raw";
-import chapterEight from "../../content/continuations/08-zerkalo-pervogo-snega.md?raw";
-import chapterNine from "../../content/continuations/09-golos-v-beloy-perchatke.md?raw";
-import chapterTen from "../../content/continuations/10-voron-kotoryy-znal.md?raw";
-import chapterEleven from "../../content/continuations/11-sovet-kotoryy-skazal-net.md?raw";
-import chapterTwelve from "../../content/continuations/12-golos-bez-prikaza.md?raw";
-
-const chapters = [
-  { id: "chapter-6", numeral: "VI", title: "Порог, который не любит приказов", markdown: chapterSix },
-  { id: "chapter-7", numeral: "VII", title: "Ответ свистка", markdown: chapterSeven },
-  { id: "chapter-8", numeral: "VIII", title: "Зеркало первого снега", markdown: chapterEight },
-  { id: "chapter-9", numeral: "IX", title: "Голос в белой перчатке", markdown: chapterNine },
-  { id: "chapter-10", numeral: "X", title: "Ворон, который знал", markdown: chapterTen },
-  { id: "chapter-11", numeral: "XI", title: "Совет, который сказал «нет»", markdown: chapterEleven },
-  { id: "chapter-12", numeral: "XII", title: "Голос без приказа", markdown: chapterTwelve },
-] as const;
-
-function narrative(markdown: string) {
-  const parts = markdown.split(/\n---\n/);
-  return (parts[1] ?? markdown)
-    .trim()
-    .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.replaceAll("\n", " "))
-    .filter(Boolean);
-}
+import { BookReader } from "../components/BookReader";
+import { narrative, readingMinutes, storyChapters as chapters } from "../../content/chapters";
 
 type ChaptersPageProps = {
   searchParams?: Promise<{ chapter?: string | string[] }>;
@@ -34,16 +10,39 @@ export default async function ChaptersPage({ searchParams }: ChaptersPageProps) 
   const requested = Array.isArray(params?.chapter) ? params.chapter[0] : params?.chapter;
   const active = Math.max(0, chapters.findIndex((chapter) => chapter.id === requested));
   const selected = chapters[active];
+  const previous = active > 0 ? chapters[active - 1] : undefined;
+  const following = active < chapters.length - 1 ? chapters[active + 1] : undefined;
 
   return <main className="reading-room">
-    <header className="reading-topbar"><a href="/#workshop">← Вернуться в Wiki</a><span>Летопись Тео · продолжения</span></header>
-    <div className="reading-layout">
-      <aside className="chapter-index" aria-label="Готовые главы"><p>ГЛАВЫ</p>{chapters.map((chapter, index) => <form key={chapter.id} action="/chapters" method="get"><input type="hidden" name="chapter" value={chapter.id} /><button type="submit" className={index === active ? "active" : ""} aria-current={index === active ? "page" : undefined}><span>{chapter.numeral}</span><strong>{chapter.title}</strong><small>11–12 минут</small></button></form>)}</aside>
-      <article className="chapter-text" id={selected.id}>
-        <header><p>ГЛАВА {selected.numeral}</p><h1>{selected.title}</h1><span>≈ 11–12 минут спокойного чтения</span></header>
-        {narrative(selected.markdown).map((paragraph, index) => <p key={index}>{paragraph}</p>)}
-        <footer>{active < chapters.length - 1 ? <a href={`/chapters?chapter=${chapters[active + 1].id}`}>Следующая глава →</a> : <a href="/#workshop">Вернуться к вариантам развития →</a>}</footer>
-      </article>
+    <div className="reading-shell">
+      <aside className="chapter-index" aria-label="Готовые главы">
+        <p className="index-head">Содержание</p>
+        <a className="index-back" href="/">← В энциклопедию</a>
+        {chapters.map((chapter, index) => <form key={chapter.id} action="/chapters" method="get">
+          <input type="hidden" name="chapter" value={chapter.id} />
+          <button type="submit" data-season={chapter.season} className={index === active ? "active" : ""} aria-current={index === active ? "page" : undefined}>
+            <span className="index-meta">
+              <span className="index-numeral">{chapter.numeral}</span>
+              <span className="index-minutes">{readingMinutes(chapter.markdown)} мин</span>
+            </span>
+            <span className="index-title">{chapter.title}</span>
+          </button>
+        </form>)}
+      </aside>
+
+      <BookReader
+        chapter={{
+          id: selected.id,
+          numeral: selected.numeral,
+          title: selected.title,
+          season: selected.season,
+          rubric: selected.rubric,
+          paragraphs: narrative(selected.markdown),
+          minutes: readingMinutes(selected.markdown),
+        }}
+        prev={previous && { id: previous.id, title: previous.title }}
+        next={following && { id: following.id, title: following.title }}
+      />
     </div>
   </main>;
 }

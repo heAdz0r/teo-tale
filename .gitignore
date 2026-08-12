@@ -30,6 +30,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!deploy/.env.example
 
 # vercel
 .vercel
@@ -40,7 +41,12 @@ yarn-error.log*
 /work/
 *.tsbuildinfo
 /.grepai/
+/.cache/
+/.venv-silero/
+/.claude/
+__pycache__/
 
 # private source material (kept only in the local project directory)
 /archive/audio/
 /content/raw-transcripts.json
+/public/audio/narration/

@@ -1,0 +1,14 @@
+FROM python:3.11-slim-bookworm
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PYTHONUNBUFFERED=1
+WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+COPY requirements-tts.txt ./
+RUN python -m pip install --index-url https://download.pytorch.org/whl/cpu -r requirements-tts.txt
+COPY scripts ./scripts
+COPY content/continuations ./content/continuations
+COPY content/narration ./content/narration
+CMD ["python", "scripts/generate_silero_narration.py", "--all-speakers", "--output", "/narration"]

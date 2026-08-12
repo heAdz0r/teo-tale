@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { AudioArchive } from "./components/AudioArchive";
 import {
-  archive, artifacts, artifactScenarios, canonStats, characters, continuity, developmentRoutes,
-  episodes, navSections, nextChapterBlueprint, places, plotThreads,
-  type WikiSectionId, worldOverview, worldPrinciples,
+  archive, artifacts, canonStats, characters, continuity,
+  episodes, navSections, places, plotThreads,
+  type WikiGroup, type WikiSectionId, worldOverview, worldPrinciples,
 } from "../content/wiki";
 
 const searchable = [
@@ -13,16 +14,123 @@ const searchable = [
   ...places.map((item) => ({ section: "world" as const, title: item.name, text: item.text })),
   ...characters.map((item) => ({ section: "characters" as const, title: item.name, text: [...item.canon, item.arc, item.question].join(" ") })),
   ...episodes.map((item) => ({ section: "chronicle" as const, title: item.title, text: `${item.summary} ${item.details.join(" ")} ${item.beats.join(" ")}` })),
-  ...plotThreads.map((item) => ({ section: "plot" as const, title: item.title, text: `${item.now} ${item.strengthen} ${item.payoff}` })),
+  ...plotThreads.map((item) => ({ section: "plot" as const, title: item.title, text: `${item.now} ${item.craft} ${item.payoff}` })),
   ...artifacts.map((item) => ({ section: "artifacts" as const, title: item.name, text: `${item.canon} ${item.rule}` })),
-  ...artifactScenarios.map((item) => ({ section: "artifacts" as const, title: item.artifact, text: `${item.situation} ${item.choicePrice} ${item.consequence}` })),
   ...continuity.map((item) => ({ section: "continuity" as const, title: item.issue, text: `${item.evidence} ${item.decision}` })),
-  ...developmentRoutes.map((item) => ({ section: "workshop" as const, title: item.title, text: `${item.premise} ${item.next.join(" ")}` })),
 ];
+
+const groups: WikiGroup[] = ["Канон", "Мастерская"];
+
+/* One icon set: single 20px box, single stroke weight, no font-dependent glyphs. */
+const icons = {
+  search: "M10.5 3a7.5 7.5 0 1 0 4.55 13.45L20 21.5 21.5 20l-4.55-4.55A7.5 7.5 0 0 0 10.5 3Zm0 2a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11Z",
+  arrowRight: "M5 12h13m0 0-5-5m5 5-5 5",
+  home: "M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-8Z",
+  globe: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 0c2.5 2.4 3.8 5.4 3.8 9S14.5 18.6 12 21m0-18C9.5 5.4 8.2 8.4 8.2 12S9.5 18.6 12 21M3.5 9h17m-17 6h17",
+  people: "M9 11a3.2 3.2 0 1 0 0-6.4A3.2 3.2 0 0 0 9 11Zm7.5.5a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2ZM3 19.5c0-3 2.7-5 6-5s6 2 6 5m2.5-5.2c2.1.4 3.5 1.9 3.5 4",
+  scroll: "M6 4h10a2 2 0 0 1 2 2v12a2 2 0 0 0 2 2H8a2 2 0 0 1-2-2V4Zm0 0a2 2 0 0 0-2 2v2h2M9 8h6M9 12h6M9 16h4",
+  more: "M6 12h.01M12 12h.01M18 12h.01",
+  file: "M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7l-4-4Zm0 0v4h4",
+  chevron: "m6 9 6 6 6-6",
+} as const;
+
+function Icon({ d, className = "ico" }: { d: string; className?: string }) {
+  return <svg className={className} viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={d} /></svg>;
+}
+
+const mobilePrimary: Array<{ id: WikiSectionId; icon: string }> = [
+  { id: "overview", icon: icons.home },
+  { id: "world", icon: icons.globe },
+  { id: "characters", icon: icons.people },
+  { id: "chronicle", icon: icons.scroll },
+];
+
+/* ---------------------------------------------------------------------------
+   The volvelle — an almanac wheel used as an instrument, not an ornament.
+   The first version drew winter broken at twelve o'clock, because that theft was
+   the only confirmed fact. The story is finished now: all four parts are back
+   with named keepers, so every arc is whole and carries its own pigment, and the
+   readout names the person who holds that season rather than a rumour.
+   --------------------------------------------------------------------------- */
+const seasonRing = [
+  { key: "winter", label: "Зима", labelX: 200, labelY: 100, arcs: ["M94.3 82.6 A158 158 0 0 1 305.7 82.6"] },
+  { key: "spring", label: "Весна", labelX: 302, labelY: 204, arcs: ["M317.4 94.3 A158 158 0 0 1 317.4 305.7"] },
+  { key: "summer", label: "Лето", labelX: 200, labelY: 310, arcs: ["M305.7 317.4 A158 158 0 0 1 94.3 317.4"] },
+  { key: "autumn", label: "Осень", labelX: 98, labelY: 204, arcs: ["M82.6 305.7 A158 158 0 0 1 82.6 94.3"] },
+] as const;
+
+const ticks = Array.from({ length: 72 }, (_, index) => {
+  const angle = (index * 5 * Math.PI) / 180;
+  const inner = index % 3 === 0 ? 126 : 132;
+  return {
+    x1: (200 + inner * Math.sin(angle)).toFixed(1), y1: (200 - inner * Math.cos(angle)).toFixed(1),
+    x2: (200 + 138 * Math.sin(angle)).toFixed(1), y2: (200 - 138 * Math.cos(angle)).toFixed(1),
+  };
+});
+
+// Season -> the keeper and the state recorded for that part in the artifact
+// catalogue, so the wheel reports real data rather than a decorative caption.
+const seasonNames: Record<string, string> = { winter: "Зима", spring: "Весна", summer: "Лето", autumn: "Осень" };
+function seasonPart(key: string) {
+  return artifacts.find((item) => item.season === key);
+}
+function seasonState(key: string) {
+  const part = seasonPart(key);
+  return part ? `${part.owner} · ${part.state}` : "состояние неизвестно";
+}
+
+function Volvelle() {
+  const [season, setSeason] = useState<string | null>(null);
+  const onSeason = (key: string | null) => setSeason(key);
+
+  return (
+    <figure className="volvelle-wrap">
+      <svg className="volvelle" viewBox="0 0 400 400" role="img"
+        aria-label="Круг года замкнут: четыре части вернулись к четырём названным хранителям.">
+        <circle className="v-ring" cx="200" cy="200" r="178" />
+        <circle className="v-ring-inner" cx="200" cy="200" r="150" />
+        <g className="v-ticks">{ticks.map((tick, index) => <line key={index} {...tick} />)}</g>
+
+        {seasonRing.map((season) => (
+          <g key={season.key} className="v-seg" tabIndex={0} role="button"
+            aria-label={`${season.label}: ${seasonState(season.key)}`}
+            onMouseEnter={() => onSeason(season.key)} onMouseLeave={() => onSeason(null)}
+            onFocus={() => onSeason(season.key)} onBlur={() => onSeason(null)}>
+            {season.arcs.map((arc, index) => (
+              <path key={index} d={arc} className={`v-arc ${season.key} is-whole`} />
+            ))}
+            {season.arcs.map((arc, index) => <path key={`hit-${index}`} className="v-hit" d={arc} />)}
+            <text className="v-season" x={season.labelX} y={season.labelY} textAnchor="middle">
+              {season.label}
+            </text>
+          </g>
+        ))}
+
+        <circle className="v-core" cx="200" cy="200" r="46" />
+        <g className="v-star">
+          <path d="M200 138v14M200 248v14M138 200h14M248 200h14" />
+          <path d="M156 156l10 10M244 244l-10-10M244 156l-10 10M156 244l10-10" opacity=".6" />
+        </g>
+        <text className="v-core-mark" x="200" y="214" textAnchor="middle">Т</text>
+      </svg>
+      <figcaption className="volvelle-legend">
+        <b><i className="solid" />круг замкнут · осень → зима → весна → лето</b>
+      </figcaption>
+      <p className="volvelle-status" data-season={season ?? undefined} aria-live="polite">
+        {season
+          ? <><b>{seasonNames[season]}</b> — {seasonState(season)}</>
+          : <span className="hint">Наведите на время года, чтобы узнать, у кого эта часть сейчас.</span>}
+      </p>
+    </figure>
+  );
+}
 
 export default function Home() {
   const [active, setActive] = useState<WikiSectionId>("overview");
   const [query, setQuery] = useState("");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const mounted = useRef(false);
 
   useEffect(() => {
     const hash = window.location.hash.slice(1) as WikiSectionId;
@@ -37,10 +145,50 @@ export default function Home() {
         event.preventDefault();
         document.querySelector<HTMLInputElement>("#wiki-search")?.focus();
       }
+      if (event.key === "Escape") setSheetOpen(false);
     }
     window.addEventListener("keydown", onShortcut);
     return () => window.removeEventListener("keydown", onShortcut);
   }, []);
+
+  // After a section change, land keyboard focus on the new heading instead of
+  // leaving it behind in the navigation.
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    const heading = frameRef.current?.querySelector<HTMLElement>("h1");
+    if (!heading) return;
+    heading.setAttribute("tabindex", "-1");
+    heading.focus({ preventScroll: true });
+  }, [active]);
+
+  // Scroll reveal is opt-in from JS, so the page reads completely without it.
+  // The timeout is a safety net: nothing may stay invisible because an observer
+  // callback never fired.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const targets = Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"));
+    if (!targets.length) return;
+    root.classList.add("reveal-on");
+
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        entry.target.classList.add("is-in");
+        observer.unobserve(entry.target);
+      }
+    }, { rootMargin: "0px 0px -6% 0px", threshold: 0.04 });
+    targets.forEach((target) => observer.observe(target));
+
+    const safety = window.setTimeout(() => targets.forEach((target) => target.classList.add("is-in")), 1600);
+    return () => {
+      window.clearTimeout(safety);
+      observer.disconnect();
+    };
+  }, [active]);
 
   const results = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("ru");
@@ -53,6 +201,7 @@ export default function Home() {
   function navigate(section: WikiSectionId) {
     setActive(section);
     setQuery("");
+    setSheetOpen(false);
     window.history.replaceState(null, "", `#${section}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -65,35 +214,45 @@ export default function Home() {
           <span><strong>Летопись Тео</strong><small>семейная wiki</small></span>
         </button>
         <nav aria-label="Разделы энциклопедии">
-          {navSections.map((item) => (
-            <button key={item.id} className={active === item.id ? "nav-item active" : "nav-item"} onClick={() => navigate(item.id)}>
-              <span>{item.eyebrow}</span>{item.label}
-            </button>
+          {groups.map((group) => (
+            <Fragment key={group}>
+              <p className="nav-group label">{group}</p>
+              {navSections.filter((item) => item.group === group).map((item) => (
+                item.href
+                  ? <a key={item.id} className="nav-item" href={item.href}>{item.label}</a>
+                  : <button key={item.id} className={active === item.id ? "nav-item active" : "nav-item"} onClick={() => navigate(item.id as WikiSectionId)} aria-current={active === item.id ? "page" : undefined}>
+                    {item.label}
+                  </button>
+              ))}
+            </Fragment>
           ))}
         </nav>
-        <div className="sidebar-note"><span className="status-dot" /><p><strong>Живой канон</strong><br />Версия от 11 августа 2026</p></div>
+        <div className="sidebar-note"><span className="status-dot" /><p><strong>Живой канон</strong><br />Версия от 12 августа 2026</p></div>
       </aside>
 
       <section className="workspace">
         <header className="topbar">
           <div className="search-wrap">
-            <span aria-hidden="true">⌕</span>
+            <Icon d={icons.search} />
             <input id="wiki-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Искать героя, место или артефакт…" aria-label="Поиск по энциклопедии" />
             <kbd>⌘ K</kbd>
             {query && (
-              <div className="search-results">
-                {results.length ? results.map((result) => (
-                  <button key={`${result.section}-${result.title}`} onClick={() => navigate(result.section)}>
-                    <span>{navSections.find((item) => item.id === result.section)?.label}</span><strong>{result.title}</strong>
-                  </button>
-                )) : <p>Ничего не найдено</p>}
+              <div className="search-results" role="status" aria-live="polite">
+                {results.length ? <>
+                  <p className="search-count">Найдено: {results.length}</p>
+                  {results.map((result) => (
+                    <button key={`${result.section}-${result.title}`} onClick={() => navigate(result.section)}>
+                      <span>{navSections.find((item) => item.id === result.section)?.label}</span><strong>{result.title}</strong>
+                    </button>
+                  ))}
+                </> : <p className="search-empty">Ничего не найдено — попробуйте имя, место или артефакт.</p>}
               </div>
             )}
           </div>
-          <div className="legend"><span className="dot canon" />канон <span className="dot idea" />редакторское</div>
+          <div className="legend"><span className="dot canon" />история завершена · 18 глав</div>
         </header>
 
-        <div className="page-frame">
+        <div className="page-frame section-enter" key={active} ref={frameRef}>
           {active === "overview" && <Overview navigate={navigate} />}
           {active === "world" && <World />}
           {active === "characters" && <Characters />}
@@ -101,42 +260,104 @@ export default function Home() {
           {active === "plot" && <Plot />}
           {active === "artifacts" && <Artifacts />}
           {active === "continuity" && <Continuity />}
-          {active === "workshop" && <Workshop />}
           {active === "archive" && <Archive />}
         </div>
       </section>
+
+      {/* Mobile navigation keeps real names; CSS reveals it only below 700px. */}
+      <nav className="mobile-bar" aria-label="Основные разделы">
+        {mobilePrimary.map((item) => {
+          const section = navSections.find((entry) => entry.id === item.id);
+          if (!section) return null;
+          return (
+            <button key={item.id} className={active === item.id ? "active" : ""} onClick={() => navigate(item.id)} aria-current={active === item.id ? "page" : undefined}>
+              <Icon d={item.icon} /><strong>{section.short}</strong>
+            </button>
+          );
+        })}
+        <button
+          className={sheetOpen || !mobilePrimary.some((item) => item.id === active) ? "active" : ""}
+          onClick={() => setSheetOpen((open) => !open)}
+          aria-expanded={sheetOpen}
+          aria-label="Остальные разделы"
+        >
+          <Icon d={icons.more} /><strong>Ещё</strong>
+        </button>
+      </nav>
+
+      {sheetOpen && <>
+        <button className="mobile-sheet-scrim" onClick={() => setSheetOpen(false)} aria-label="Закрыть список разделов" />
+        <div className="mobile-sheet" role="dialog" aria-label="Все разделы энциклопедии">
+          {groups.map((group) => (
+            <Fragment key={group}>
+              <p>{group}</p>
+              {navSections.filter((item) => item.group === group).map((item) => (
+                item.href
+                  ? <a key={item.id} href={item.href}>{item.label}</a>
+                  : <button key={item.id} className={active === item.id ? "active" : ""} onClick={() => navigate(item.id as WikiSectionId)}>{item.label}</button>
+              ))}
+            </Fragment>
+          ))}
+        </div>
+      </>}
     </main>
   );
 }
 
-function PageHead({ index, kicker, title, intro }: { index: string; kicker: string; title: string; intro: string }) {
-  return <header className="page-head"><p>{index} / {kicker}</p><h1>{title}</h1><div className="rule" /><p className="lede">{intro}</p></header>;
+function PageHead({ group, kicker, title, intro }: { group: WikiGroup; kicker: string; title: string; intro: string }) {
+  return <header className="page-head">
+    <p className="page-head-meta label">{group}<em>·</em>{kicker}</p>
+    <h1>{title}</h1><div className="rule" /><p className="lede">{intro}</p>
+  </header>;
 }
 
 function Overview({ navigate }: { navigate: (section: WikiSectionId) => void }) {
   return <>
     <section className="hero">
       <div className="hero-copy">
-        <p className="overline">КАНОН · ТОМ ПЕРВЫЙ</p>
-        <h1>Мальчик,<br />который достал<br /><em>до облаков</em></h1>
-        <p className="hero-intro">Тео — одиннадцатилетний мастер, фантазёр и будущий хранитель времён года. Это живая энциклопедия его мира: что уже случилось, что требует ответа и куда история может повернуть дальше.</p>
+        <p className="overline">Летопись · том первый</p>
+        <h1>
+          <span className="line"><span>Мальчик,</span></span>
+          <span className="line"><span>который достал</span></span>
+          <span className="line"><span><em>до облаков</em></span></span>
+        </h1>
+        <p className="hero-intro">Тео — одиннадцатилетний мастер, фантазёр и тот, кто вернул временам года их границы. История дописана до конца: восемнадцать глав от лестницы до облаков до снега, выпавшего вовремя, — и все восемнадцать можно читать вслух, включая первые пять, переложенные из аудиозаписей.</p>
         <div className="hero-actions">
-          <button className="primary" onClick={() => navigate("chronicle")}>Читать хронику <span>→</span></button>
-          <button className="text-button" onClick={() => navigate("workshop")}>Открыть варианты сюжета</button>
+          <a className="primary" href="/chapters">Открыть читалку <Icon d={icons.arrowRight} /></a>
+          <button className="text-button" onClick={() => navigate("chronicle")}>Смотреть хронику всех глав</button>
         </div>
       </div>
-      <figure className="cover-frame">
-        <Image src="/characters-cover.png" width={1536} height={1024} priority alt="Тео, старец Весемир и принц Талос у воздушного замка" />
-        <figcaption><span>Главные персонажи</span><strong>Тео · Весемир · Талос</strong></figcaption>
-      </figure>
+      <Volvelle />
     </section>
-    <section className="stats" aria-label="Сводка канона">{canonStats.map((stat) => <div key={stat.label}><strong>{stat.value}</strong><span>{stat.label}</span></div>)}</section>
-    <section className="overview-grid">
-      <article className="featured-thread"><p className="card-kicker">ГЛАВНЫЙ КОНФЛИКТ</p><h2>Кто-то собирает<br />времена года.</h2><p>Зимний артефакт исчез из сокровищницы Талоса. Первый снег уже выпал, а за горным хребтом скрыт проход к древней силе.</p><button onClick={() => navigate("plot")}>Проследить сюжетную линию →</button></article>
+
+    {/* The ledger leads with the story's actual state, not with a headcount. */}
+    <section className="ledger" aria-label="Состояние канона" data-reveal>
+      <div className="alarm"><strong><span className="frost-mark" />Круг замкнут</strong><span>зима вернулась в свои границы</span></div>
+      {canonStats.map((stat) => <div key={stat.label}><strong>{stat.value}</strong><span>{stat.label}</span></div>)}
+    </section>
+
+    {/* The cover artwork returns where a book actually puts it: a frontispiece
+        plate facing the opening page. */}
+    <figure className="frontispiece" data-reveal>
+      <Image src="/characters-cover.png" width={1536} height={1024} priority alt="Тео, старец Весемир и принц Талос у воздушного замка" />
+      <figcaption>
+        <span>Фронтиспис</span>
+        <strong>Тео · Весемир · Талос</strong>
+        <em>Мальчик, наставник и принц — три голоса, на которых держится первый том.</em>
+      </figcaption>
+    </figure>
+
+    <section className="overview-grid" data-reveal>
+      <article className="featured-thread">
+        <p className="card-kicker">Чем всё кончилось</p>
+        <h2>Круг года нельзя<br />собрать приказом.</h2>
+        <p>Четыре сезонные части соединяются только добровольным «да» четырёх хранителей — и потому враг годами уговаривал, а не нападал. Тео пришёл к нему без клинка и без свистка и просто попросил.</p>
+        <button className="link-arrow" onClick={() => navigate("plot")}>Посмотреть все восемь линий <Icon d={icons.arrowRight} className="ico ico-sm" /></button>
+      </article>
       <div className="quick-links">
-        <button onClick={() => navigate("characters")}><span>02</span><strong>Кто есть кто</strong><small>6 карточек персонажей</small></button>
-        <button onClick={() => navigate("continuity")}><span>06</span><strong>Что нужно уточнить</strong><small>8 нестыковок и решений</small></button>
-        <button onClick={() => navigate("workshop")}><span>07</span><strong>Что будет дальше</strong><small>3 маршрута продолжения</small></button>
+        <button onClick={() => navigate("characters")}><strong>Кто есть кто</strong><small>тринадцать карточек персонажей</small><Icon d={icons.arrowRight} /></button>
+        <button onClick={() => navigate("continuity")}><strong>Разобранные нестыковки</strong><small>десять вопросов, все закрыты</small><Icon d={icons.arrowRight} /></button>
+        <a href="/chapters"><strong>Восемнадцать глав вслух</strong><small>от I «Замок над облаками» до XVIII «Круг года»</small><Icon d={icons.arrowRight} /></a>
       </div>
     </section>
   </>;
@@ -144,92 +365,96 @@ function Overview({ navigate }: { navigate: (section: WikiSectionId) => void }) 
 
 function World() {
   return <>
-    <PageHead index="01" kicker="АТЛАС" title="Мир истории" intro="Мир строится от маленького и знакомого к большому и чудесному: деревня, дорога, богатая крепость, горный рубеж и земли, где сама смена времён года стала оружием." />
-    <figure className="world-plate">
+    <PageHead group="Канон" kicker="Атлас" title="Мир истории" intro="Мир строится от маленького и знакомого к большому и чудесному: деревня, дорога, богатая крепость, горный рубеж, заклятый лес и остановленный час. А кончается всё там же, где началось — на круглом холме над восемью соломенными крышами." />
+    <figure className="world-plate" data-reveal>
       <Image src={worldOverview.image} width={1536} height={1024} alt={worldOverview.alt} />
       <figcaption><span>Панорама мира</span>{worldOverview.caption}</figcaption>
     </figure>
-    <div className="principle-grid">{worldPrinciples.map((item) => <article key={item.title} className={item.status === "канон" ? "canon-card" : "idea-card"}><span>{item.status}</span><h2>{item.title}</h2><p>{item.text}</p></article>)}</div>
+    {/* Every principle is canon now: the eighteen chapters established all of them,
+        so the card no longer carries a canon/proposal badge. */}
+    <div className="principle-grid" data-reveal>{worldPrinciples.map((item) => <article key={item.title} className="canon-card"><span>канон</span><h2>{item.title}</h2><p>{item.text}</p></article>)}</div>
     <h2 className="section-title">География пути</h2>
-    <div className="route-line">{places.map((place, index) => <article key={place.name}><div className="route-index">{String(index + 1).padStart(2, "0")}</div><div><span>{place.kind}</span><h3>{place.name}</h3><p>{place.text}</p></div></article>)}</div>
+    {/* Numbering survives here because the places really are walked in order. */}
+    <div className="route-line">{places.map((place, index) => <article key={place.name} data-reveal><div className="route-index">{String(index + 1).padStart(2, "0")}</div><div><span>{place.kind}</span><h3>{place.name}</h3><p>{place.text}</p></div></article>)}</div>
   </>;
+}
+
+function CharacterCard({ character }: { character: (typeof characters)[number] }) {
+  const [open, setOpen] = useState(false);
+  const visible = open ? character.canon : character.canon.slice(0, 3);
+  const hidden = character.canon.length - 3;
+
+  return <article className="character-card" data-reveal>
+    {/* Characters introduced in chapters XIII–XVIII have no commissioned portrait
+        yet, so the card falls back to an initial plate instead of a broken image. */}
+    {character.image
+      ? <Image className="character-portrait" src={character.image} width={1254} height={1254} alt={character.imageAlt} />
+      : <div className="character-portrait is-initial" aria-hidden="true"><span>{character.mark}</span></div>}
+    <div className="character-card-content">
+      <div className="character-top"><span className="portrait-token">{character.mark}</span><div><p>{character.role}</p><h2>{character.name}</h2></div></div>
+      <ul>{visible.map((fact) => <li key={fact}>{fact}</li>)}</ul>
+      {hidden > 0 && (
+        <button className="character-more" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+          {open ? "Свернуть" : `Ещё ${hidden} факта`}<Icon d={icons.chevron} className="ico ico-sm" />
+        </button>
+      )}
+      <div className="arc"><span>ДУГА</span><p>{character.arc}</p></div>
+      <blockquote>{character.question}</blockquote>
+    </div>
+  </article>;
 }
 
 function Characters() {
   return <>
-    <PageHead index="02" kicker="ДЕЙСТВУЮЩИЕ ЛИЦА" title="Персонажи" intro="Карточки разделяют уже рассказанные факты, возможную внутреннюю арку и вопрос, который способен двигать героя дальше." />
-    <div className="character-grid">{characters.map((character, index) => <article key={character.name} className="character-card">
-      <Image className="character-portrait" src={character.image} width={1254} height={1254} alt={character.imageAlt} />
-      <div className="character-card-content">
-        <div className="character-top"><span className="portrait-token">{character.mark}</span><div><p>{character.role}</p><h2>{character.name}</h2></div><b>{String(index + 1).padStart(2, "0")}</b></div>
-        <ul>{character.canon.map((fact) => <li key={fact}>{fact}</li>)}</ul>
-        <div className="arc"><span>ДУГА</span><p>{character.arc}</p></div><blockquote>{character.question}</blockquote>
-      </div>
-    </article>)}</div>
+    <PageHead group="Канон" kicker="Действующие лица" title="Персонажи" intro="Тринадцать карточек: факты из глав, пройденная дуга и главный вопрос героя — теперь с ответом, потому что история дописана до конца." />
+    <div className="character-grid">{characters.map((character) => <CharacterCard key={character.name} character={character} />)}</div>
   </>;
 }
 
 function Chronicle() {
   return <>
-    <PageHead index="03" kicker="ЛЕТОПИСЬ" title="Пять рассказанных глав" intro="Подробная хронология бережно следует пяти аудиозаписям: сохраняет порядок событий, маленькие бытовые детали, решения Тео и уже посеянные тайны, не смешивая канон с редакторскими продолжениями." />
-    <div className="timeline">{episodes.map((episode) => <article key={episode.no}><div className="roman">{episode.no}</div><div className="episode-body"><div className="episode-meta"><span>{episode.date}</span><span>{episode.duration}</span></div><h2>{episode.title}</h2><p>{episode.summary}</p><ul className="episode-details">{episode.details.map((detail) => <li key={detail}>{detail}</li>)}</ul><div className="chips">{episode.beats.map((beat) => <span key={beat}>{beat}</span>)}</div></div></article>)}</div>
+    <PageHead group="Канон" kicker="Летопись" title="Восемнадцать глав" intro="Полная хронология: пять аудиосказок, записанных голосом, и тринадцать глав, дописанных текстом. Порядок событий, бытовые детали, решения Тео и цена каждого решения — от лестницы до облаков до снега, выпавшего вовремя." />
+    <div className="timeline">{episodes.map((episode) => <article key={episode.no} data-reveal><div className="roman">{episode.no}</div><div className="episode-body"><div className="episode-meta"><span>{episode.date}</span><span>{episode.duration}</span><span>{episode.kind}</span></div><h2>{episode.title}</h2><p>{episode.summary}</p><ul className="episode-details">{episode.details.map((detail) => <li key={detail}>{detail}</li>)}</ul><div className="chips">{episode.beats.map((beat) => <span key={beat}>{beat}</span>)}</div>{episode.href && <a className="episode-read" href={episode.href}>Читать главу <Icon d={icons.arrowRight} className="ico ico-sm" /></a>}</div></article>)}</div>
   </>;
 }
 
 function Plot() {
   return <>
-    <PageHead index="04" kicker="СЮЖЕТНЫЕ НИТИ" title="Что держит историю" intro="Каждая линия получает текущее состояние, способ усиления и обещанную развязку. Это помогает не терять посеянные детали и строить главы с отдачей." />
-    <div className="thread-list">{plotThreads.map((thread, index) => <article key={thread.title}><div className="thread-number">{String(index + 1).padStart(2, "0")}</div><div><div className="thread-heading"><h2>{thread.title}</h2><span>{thread.state}</span></div><p>{thread.now}</p><dl><div><dt>Как укрепить</dt><dd>{thread.strengthen}</dd></div><div><dt>Возможная отдача</dt><dd>{thread.payoff}</dd></div></dl></div></article>)}</div>
+    <PageHead group="Мастерская" kicker="Сюжетные нити" title="Что держало историю" intro="Восемь линий, и все закрыты. У каждой — итог, приём, которым она держалась, и развязка, которую она обещала с самого начала." />
+    <div className="thread-list">{plotThreads.map((thread) => <article key={thread.title} data-reveal><div className="thread-heading"><h2>{thread.title}</h2><span>{thread.state}</span></div><p>{thread.now}</p><dl><div><dt>Как сделано</dt><dd>{thread.craft}</dd></div><div><dt>Развязка</dt><dd>{thread.payoff}</dd></div></dl></article>)}</div>
   </>;
 }
 
 function Artifacts() {
   return <>
-    <PageHead index="05" kicker="КАТАЛОГ" title="Артефакты и правила" intro="Чтобы магия создавала сюжет, а не отменяла трудности, каждому предмету нужны ясная возможность, граница и цена." />
-    <div className="artifact-table"><div className="artifact-row artifact-header"><span aria-hidden="true" /><span>Артефакт</span><span>Канон</span><span>Рабочее ограничение</span></div>{artifacts.map((artifact) => <article className="artifact-row" key={artifact.name}><Image className="artifact-thumb" src={artifact.image} width={1254} height={1254} alt={artifact.imageAlt} /><div><h2>{artifact.name}</h2><p>{artifact.owner}</p><b>{artifact.state}</b></div><p>{artifact.canon}</p><p className="proposal">{artifact.rule}</p></article>)}</div>
-    <h2 className="section-title">Ситуации, где артефакт придётся применить</h2>
-    <div className="scenario-grid">{artifactScenarios.map((scenario, index) => <article key={`${scenario.artifact}-${index}`}>
-      <div><span>{String(index + 1).padStart(2, "0")}</span><strong>{scenario.artifact}</strong></div>
-      <h3>Ситуация</h3><p>{scenario.situation}</p>
-      <h3>Выбор и цена</h3><p>{scenario.choicePrice}</p>
-      <h3>Последствие</h3><p>{scenario.consequence}</p>
-    </article>)}</div>
+    <PageHead group="Канон" kicker="Каталог" title="Артефакты и правила" intro="Магия здесь создаёт сюжет, а не отменяет трудности: у каждого предмета есть возможность, граница и цена, и все три проверены в главах." />
+    <div className="artifact-table">
+      <div className="artifact-row artifact-header"><span aria-hidden="true" /><span>Артефакт</span><span>Что было в главах</span><span>Правило и цена</span></div>
+      {/* data-season lets the four seasonal parts carry their own pigment; the
+          personal gifts stay gold, because they belong to no season. */}
+      {artifacts.map((artifact) => <article className="artifact-row" key={artifact.name} data-season={artifact.season ?? undefined}>
+        <Image className="artifact-thumb" src={artifact.image} width={1254} height={1254} alt={artifact.imageAlt} />
+        <div><h2>{artifact.name}</h2><p>{artifact.owner}</p><b>{artifact.state}</b></div>
+        <p>{artifact.canon}</p>
+        <p className="proposal">{artifact.rule}</p>
+      </article>)}
+    </div>
   </>;
 }
 
 function Continuity() {
   return <>
-    <PageHead index="06" kicker="РЕДАКТОРСКАЯ" title="Нестыковки и решения" intro="Это не список ошибок, а карта мест, где одно уточнение способно сделать мир убедительнее. Рабочие решения можно принять, изменить или оставить загадкой." />
-    <div className="continuity-list">{continuity.map((item, index) => <article key={item.issue}><div className="issue-head"><span>{String(index + 1).padStart(2, "0")}</span><h2>{item.issue}</h2><b className={`severity ${item.severity}`}>{item.severity}</b></div><div className="issue-columns"><div><h3>Что слышно в сказках</h3><p>{item.evidence}</p></div><div><h3>Рабочее решение</h3><p>{item.decision}</p></div></div></article>)}</div>
-  </>;
-}
-
-function Workshop() {
-  const [route, setRoute] = useState(0);
-  const selected = developmentRoutes[route];
-  return <>
-    <PageHead index="07" kicker="МАСТЕРСКАЯ АВТОРА" title="Куда вести историю" intro="Три направления не конкурируют насмерть: одно может стать внешним приключением, второе — тайной мира, третье — внутренним конфликтом союзника." />
-    <div className="route-tabs" role="tablist" aria-label="Варианты продолжения">{developmentRoutes.map((item, index) => <button key={item.key} onClick={() => setRoute(index)} className={route === index ? "active" : ""} role="tab" aria-selected={route === index}><span>{item.key}</span>{item.title}</button>)}</div>
-    <article className="route-detail"><div className="route-title"><div><p>{selected.tone}</p><h2>{selected.title}</h2></div><span>{selected.key}</span></div><p className="route-premise">{selected.premise}</p><h3>Три ближайших поворота</h3><ol>{selected.next.map((item) => <li key={item}>{item}</li>)}</ol><div className="why"><strong>Почему работает</strong><p>{selected.strength}</p></div></article>
-    <h2 className="section-title">Семь готовых глав для чтения</h2>
-    <div className="chapter-cards">
-      <a href="/chapters?chapter=chapter-6"><span>VI · 11–12 минут</span><strong>Порог, который не любит приказов</strong><p>Талос объясняет Полог, Тео пишет родителям и отвечает за историю с караваном.</p></a>
-      <a href="/chapters?chapter=chapter-7"><span>VII · 11–12 минут</span><strong>Ответ свистка</strong><p>Свисток создаёт встречу, клинок требует решения, а лес начинает забирать память.</p></a>
-      <a href="/chapters?chapter=chapter-8"><span>VIII · 11–12 минут</span><strong>Зеркало первого снега</strong><p>Тео раскрывает способ кражи и узнаёт, почему опасен даже осколок зимы.</p></a>
-      <a href="/chapters?chapter=chapter-9"><span>IX · 11–12 минут</span><strong>Голос в белой перчатке</strong><p>Отражение крадёт голос Талоса, а Тео и Лея останавливают первый замок весенней двери.</p></a>
-      <a href="/chapters?chapter=chapter-10"><span>X · 11–12 минут</span><strong>Ворон, который знал</strong><p>Талос раскрывает сон Весемира и объясняет, почему следил за Тео с самого начала.</p></a>
-      <a href="/chapters?chapter=chapter-11"><span>XI · 11–12 минут</span><strong>Совет, который сказал «нет»</strong><p>Принц признаётся в опасности своего дара, а двор учится проверять даже знакомый голос.</p></a>
-      <a href="/chapters?chapter=chapter-12"><span>XII · 11–12 минут</span><strong>Голос без приказа</strong><p>Свисток возвращает помощь отца, Талос отказывается от преимущества, а весенняя дверь закрывается.</p></a>
-    </div>
-    <h2 className="section-title">Скелет следующих эпизодов</h2><div className="blueprint">{nextChapterBlueprint.map((item) => <article key={item.beat}><span>{item.beat}</span><p>{item.text}</p></article>)}</div>
+    <PageHead group="Мастерская" kicker="Редакторская" title="Разобранные нестыковки" intro="Десять вопросов, которые оставляли аудиосказки, — и глава, в которой каждый из них закрыт. Это уже не список задач, а протокол: что было слышно в записи и как это решено в тексте." />
+    {/* Severity is the real signal, so the old row numbers are gone. */}
+    <div className="continuity-list">{continuity.map((item) => <article key={item.issue} data-reveal><div className="issue-head"><h2>{item.issue}</h2><b className={`severity ${item.severity}`}>{item.severity}</b></div><div className="issue-columns"><div><h3>Что слышно в сказках</h3><p>{item.evidence}</p></div><div><h3>Рабочее решение</h3><p>{item.decision}</p></div></div></article>)}</div>
   </>;
 }
 
 function Archive() {
   return <>
-    <PageHead index="08" kicker="ИСТОЧНИКИ" title="Архив аудиосказок" intro="Пять исходных голосовых сохранены без изменений. Автоматическая расшифровка лежит рядом и служит источником для канона; имена и важные формулировки желательно сверять на слух." />
-    <div className="archive-note"><strong>51 минут 35 секунд</strong><p>Локальная расшифровка Whisper · русский язык · исходники OGG</p></div>
-    <div className="archive-list">{archive.map((item) => <article key={item.id}><span className="file-icon">◉</span><div><h2>{item.chapter}</h2><p>{item.date} · сообщение #{item.id}</p></div><strong>{item.duration}</strong><code>{item.file}</code></article>)}</div>
+    <PageHead group="Канон" kicker="Источники" title="Архив аудиосказок" intro="Пять исходных голосовых сохранены без изменений — это первоисточник глав I–V. Автоматическая расшифровка лежит рядом и служит источником для канона; имена и важные формулировки желательно сверять на слух." />
+    <div className="archive-note"><strong>51 минута 35 секунд</strong><p>Локальная расшифровка Whisper · русский язык · исходники OGG</p></div>
+    <AudioArchive tracks={archive} />
     <div className="source-map"><div><span>Оригиналы</span><code>archive/audio/</code></div><div><span>Сырая STT-расшифровка</span><code>content/raw-transcripts.json</code></div><div><span>Канон Wiki</span><code>content/wiki.ts</code></div></div>
   </>;
 }
