@@ -197,8 +197,20 @@ export function BookReader({ chapter, prev, next }: {
       setStep(width + gap);
       setPages(Math.max(1, Math.ceil(boxes / columns)));
     }
+    // CHANGED: a hidden tab never runs requestAnimationFrame, so a chapter opened
+    // in a background tab (cmd-click on "next chapter", a restored session) was
+    // never measured: the flow kept its full natural height inside the clipped
+    // viewport and all but the first screen of the chapter was unreachable, with
+    // the pager stuck on "1 / 1". Layout metrics are available while hidden, so
+    // measure straight away in that case and re-measure once the tab is shown.
+    let timer = 0;
     function schedule() {
       cancelAnimationFrame(frame);
+      clearTimeout(timer);
+      if (document.hidden) {
+        timer = window.setTimeout(measure, 0);
+        return;
+      }
       frame = requestAnimationFrame(measure);
     }
 
@@ -208,10 +220,13 @@ export function BookReader({ chapter, prev, next }: {
     const observer = new ResizeObserver(schedule);
     if (leaf) observer.observe(leaf);
     window.addEventListener("resize", schedule);
+    document.addEventListener("visibilitychange", schedule); // CHANGED: re-measure on reveal
     return () => {
       cancelAnimationFrame(frame);
+      clearTimeout(timer); // CHANGED
       observer.disconnect();
       window.removeEventListener("resize", schedule);
+      document.removeEventListener("visibilitychange", schedule); // CHANGED
     };
   }, [paged, chapter.id, settings.size, settings.leading, settings.measure, settings.face]);
 
@@ -433,14 +448,19 @@ export function BookReader({ chapter, prev, next }: {
           </nav>
         )}
 
-        {(!paged || safePage >= pages - 1) && <footer className="reader-foot">
+        {/* CHANGED: in paged mode this footer used to mount only on the last page.
+            It shares the leaf's flex column with the viewport, so appearing there
+            shrank the viewport after the column height had been measured, and the
+            last page ended on a sliced line. Keep it mounted and only veil it, so
+            the measured height holds for every page. */}
+        <footer className={!paged || safePage >= pages - 1 ? "reader-foot" : "reader-foot is-veiled"} aria-hidden={!paged || safePage >= pages - 1 ? undefined : true}>
           {prev
             ? <a className="reader-turn" href={`/chapters?chapter=${prev.id}`}><Glyph d={glyphs.back} className="ico ico-sm" /><span><small>Предыдущая глава</small>{prev.title}</span></a>
             : <a className="reader-turn" href="/#workshop"><Glyph d={glyphs.back} className="ico ico-sm" /><span><small>Назад</small>Все продолжения</span></a>}
           {next
             ? <a className="reader-turn is-next" href={`/chapters?chapter=${next.id}`}><span><small>Следующая глава</small>{next.title}</span><Glyph d={glyphs.forward} className="ico ico-sm" /></a>
             : <a className="reader-turn is-next" href="/#workshop"><span><small>Дальше</small>Варианты развития</span><Glyph d={glyphs.forward} className="ico ico-sm" /></a>}
-        </footer>}
+        </footer>
       </div>
     </div>
   );

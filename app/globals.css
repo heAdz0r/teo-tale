@@ -859,6 +859,10 @@ html.reader-locked,html.reader-locked body { height:100%; overflow:hidden; }
 .tile.is-mode.on .ico { color:var(--ink); }
 
 .reader.is-paged .reader-foot { margin:var(--s16) auto 0; padding-top:var(--s16); }
+/* CHANGED: the paged footer stays mounted on every page, so its height is part
+   of the leaf before the column height is measured. Veiling it keeps that
+   height reserved and the last page no longer ends on a sliced line. */
+.reader.is-paged .reader-foot.is-veiled { visibility:hidden; pointer-events:none; }
 .reader-foot { margin:var(--s80) auto 0; max-width:var(--reader-measure); padding-top:var(--s24); border-top:1px solid var(--page-rule); display:flex; flex-wrap:wrap; gap:var(--s16); justify-content:space-between; }
 .reader-turn { display:inline-flex; align-items:center; gap:var(--s12); max-width:19rem; color:var(--ink-soft); text-decoration:none; }
 .reader-turn.is-next { text-align:right; }
