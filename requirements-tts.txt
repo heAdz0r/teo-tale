@@ -1,2 +1,7 @@
 # Optional offline narration toolchain. The website itself has no Python runtime.
 torch>=2.0,<3
+# generate_silero_narration.write_wav converts the model output through
+# Tensor.numpy(). Torch used to install numpy for us and no longer does, so the
+# image built fine and then died on the first segment with "Numpy is not
+# available". Declare what the script actually imports.
+numpy>=1.24,<3
