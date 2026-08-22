@@ -79,6 +79,31 @@ def validate_direction(direction: dict[str, Any]) -> None:
                     raise DirectionError(f"{key} must be a non-negative integer in {chapter_id}")
 
 
+# A sentence ends at run of .!?… plus any closing quotes or brackets, followed by
+# whitespace or the end of the paragraph. This slices the paragraph instead of
+# matching pieces out of it: `re.findall` silently dropped every run it could not
+# match, and the story uses the „…“ quote pair whose closing mark is not one of
+# the marks the old pattern allowed after a full stop — so `„а если?“` narrated as
+# `„а “`. Slicing can never lose a character.
+_SENTENCE_END = re.compile(r'[.!?…]+[»«”“„"\')\]]*(?=\s|$)')
+
+
+def _sentences(text: str) -> list[str]:
+    sentences: list[str] = []
+    start = 0
+    for match in _SENTENCE_END.finditer(text):
+        if match.end() <= start:
+            continue
+        piece = text[start:match.end()].strip()
+        if piece:
+            sentences.append(piece)
+        start = match.end()
+    tail = text[start:].strip()
+    if tail:
+        sentences.append(tail)
+    return sentences
+
+
 def _split_long_part(part: str, max_chars: int) -> list[str]:
     chunks: list[str] = []
     current = ""
@@ -106,7 +131,7 @@ def narration_segments(paragraphs: list[str], max_chars: int) -> list[Segment]:
         if text == "* * *":
             scene_before = True
             continue
-        sentences = re.findall(r'[^.!?…]+(?:[.!?…]+[»”"]*)?(?:\s+|$)', text)
+        sentences = _sentences(text)
         for index, sentence in enumerate(sentences or [text]):
             for subindex, part in enumerate(_split_long_part(sentence.strip(), max_chars)):
                 units.append((part, index == 0 and subindex == 0, scene_before))
@@ -119,7 +144,8 @@ def narration_segments(paragraphs: list[str], max_chars: int) -> list[Segment]:
         separator = "\n\n" if paragraph_start and current else (" " if current else "")
         candidate = f"{current}{separator}{text}"
         if starts_scene or (current and len(candidate) > max_chars):
-            segments.append(Segment(current, current_scene))
+            if current:
+                segments.append(Segment(current, current_scene))
             current = text
             current_scene = starts_scene
         else:
@@ -209,6 +235,13 @@ def direction_revision(direction: dict[str, Any]) -> str:
 
 
 def narration_revision(paragraphs: list[str], direction: dict[str, Any]) -> str:
+    # The revision names the audio files, so it has to cover everything that
+    # decides what is spoken. Hashing only the paragraphs let a segmentation fix
+    # ship without renaming a single file, leaving manifests describing audio
+    # that no longer matched them.
     source = "\n\n".join(paragraphs)
-    payload = f"{source}\0{direction_revision(direction)}"
+    spoken = "\0".join(
+        segment.text for segment in narration_segments(paragraphs, direction["defaults"]["maxChars"])
+    )
+    payload = f"{source}\0{direction_revision(direction)}\0{spoken}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
